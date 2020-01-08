@@ -334,6 +334,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * to incorporate impact of the highest bits that would otherwise
      * never be used in index calculations because of table bounds.
      */
+    // 计算键名的哈希值
     static final int hash(Object key) {
         int h;
         return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
@@ -626,21 +627,31 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                    boolean evict) {
         Node<K,V>[] tab; Node<K,V> p; int n, i;
         if ((tab = table) == null || (n = tab.length) == 0)
-            n = (tab = resize()).length;
+            //  集合大小为 0 时会初次扩容resize()
+            n = (tab = resize()).length; 
+        // 判断是否发生 hash 碰撞，数组索引为 (n - 1) & hash
         if ((p = tab[i = (n - 1) & hash]) == null)
+            // 不发生 hash 碰撞，以数组存储
             tab[i] = newNode(hash, key, value, null);
         else {
             Node<K,V> e; K k;
             if (p.hash == hash &&
                 ((k = p.key) == key || (key != null && key.equals(k))))
                 e = p;
+            // 判断是否是树节点
             else if (p instanceof TreeNode)
+                // 红黑树存储
                 e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value);
             else {
+                // 链表插入
                 for (int binCount = 0; ; ++binCount) {
                     if ((e = p.next) == null) {
+                        // 链表存储
                         p.next = newNode(hash, key, value, null);
+                        // static final int TREEIFY_THRESHOLD = 8; 链表长度
+                        // 判断链表长度是否大于 8 
                         if (binCount >= TREEIFY_THRESHOLD - 1) // -1 for 1st
+                            // 转换 Node 节点为 TreeNode 节点
                             treeifyBin(tab, hash);
                         break;
                     }
@@ -660,6 +671,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         }
         ++modCount;
         if (++size > threshold)
+            // 是否扩容判断，阀值threshold = 初始容量 * 负载因子
             resize();
         afterNodeInsertion(evict);
         return null;
@@ -673,17 +685,23 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * with a power of two offset in the new table.
      *
      * @return the table
+     * static final int MAXIMUM_CAPACITY = 1 << 30;  集合最大容量 
+     * static final int DEFAULT_INITIAL_CAPACITY = 1 << 4; 初始容量 16
      */
     final Node<K,V>[] resize() {
         Node<K,V>[] oldTab = table;
         int oldCap = (oldTab == null) ? 0 : oldTab.length;
+        // oldCap 数组长度  oldThr 阀值
         int oldThr = threshold;
         int newCap, newThr = 0;
+        // 计算容量和阀值得大小 
         if (oldCap > 0) {
             if (oldCap >= MAXIMUM_CAPACITY) {
                 threshold = Integer.MAX_VALUE;
                 return oldTab;
             }
+            // 扩容条件，扩容后的容量在 16 到 最大容量之间时
+            // 扩容大小为 << 1 ，2 倍 相等乘 2
             else if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY &&
                      oldCap >= DEFAULT_INITIAL_CAPACITY)
                 newThr = oldThr << 1; // double threshold
@@ -699,6 +717,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             newThr = (newCap < MAXIMUM_CAPACITY && ft < (float)MAXIMUM_CAPACITY ?
                       (int)ft : Integer.MAX_VALUE);
         }
+        // 扩容，复制新数组
         threshold = newThr;
         @SuppressWarnings({"rawtypes","unchecked"})
             Node<K,V>[] newTab = (Node<K,V>[])new Node[newCap];
