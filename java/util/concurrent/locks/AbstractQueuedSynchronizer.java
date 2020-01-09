@@ -440,6 +440,14 @@ public abstract class AbstractQueuedSynchronizer
          * CONDITION for condition nodes.  It is modified using CAS
          * (or when possible, unconditional volatile writes).
          */
+        /**
+         * 状态字段，仅采用以下值:
+		 * SIGNAL(值为-1):此节点的后继节点是(或者即将)被阻塞的,因此当释放或者取消当前节点后必须取消挂起(唤醒)后继节点
+		 *        为了避免竞争,首先获取方法表明他们需要一个信号,然后原子的获取该信号,失败时阻塞
+		 * CANCELLED(值为1):由于超时或中断，该节点被取消,节点永远不会修改此状态,尤其是具有取消节点的线程永远不会再次阻塞
+		 * CONDITION(值为-2):此节点当前在条件队列中,直到被转移前该节点不会被当做同步队列节点(此时状态为0)
+		 * PROPAGATE(值为-3):共享式释放节点应该传播到其他节点
+         */
         volatile int waitStatus;
 
         /**
