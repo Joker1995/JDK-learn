@@ -593,7 +593,6 @@ public abstract class AbstractQueuedSynchronizer
      * @return node's predecessor
      */
     private Node enq(final Node node) {
-        // 如果Pred指针是Null（说明等待队列中没有元素）或者当前Pred指针和Tail指向的位置不同（说明被别的线程已经修改）
         for (;;) {
             Node t = tail;
             if (t == null) { // Must initialize
@@ -632,6 +631,7 @@ public abstract class AbstractQueuedSynchronizer
                 return node;
             }
         }
+        // 如果Pred指针是Null（说明等待队列中没有元素）或者当前Pred指针和Tail指向的位置不同（说明被别的线程已经修改）
         enq(node);
         return node;
     }
