@@ -285,7 +285,7 @@ import sun.misc.Unsafe;
  *
  * @since 1.5
  * @author Doug Lea
- 
+
  * Q：某个线程获取锁失败的后续流程是什么呢？
  * A：存在某种排队等候机制，线程继续等待，仍然保留获取锁的可能，获取锁流程仍在继续。
  * Q：既然说到了排队等候机制，那么就一定会有某种队列形成，这样的队列是什么数据结构呢？
@@ -1271,6 +1271,8 @@ public abstract class AbstractQueuedSynchronizer
      *        can represent anything you like.
      */
     public final void acquire(int arg) {
+        // 尝试获取锁
+        // 如果失败了,就排队
         if (!tryAcquire(arg) &&
             acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
             // 如果acquireQueued为True，就会执行selfInterrupt方法
@@ -1610,7 +1612,7 @@ public abstract class AbstractQueuedSynchronizer
         // 真正的第一个有数据的节点，是在第二个节点开始的
         // 当h != t时： 如果(s = h.next) == null，等待队列正在有线程进行初始化，但只是进行到了Tail指向Head，没有将Head指向Tail，此时队列中有元素，需要返回True
         // 如果(s = h.next) != null，说明此时队列中至少有一个有效节点
-        
+
         // 判断s.thread != Thread.currentThread()
         // 如果此时s.thread == Thread.currentThread()，说明等待队列的第一个有效节点中的线程与当前线程相同，那么当前线程是可以获取资源的
         // 如果s.thread != Thread.currentThread()，说明等待队列的第一个有效节点线程与当前线程不同，当前线程必须加入进等待队列
