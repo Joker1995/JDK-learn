@@ -608,8 +608,10 @@ public abstract class AbstractQueuedSynchronizer
                 if (compareAndSetHead(new Node()))
                     tail = head;
             } else {
+                // 如果尾节点不为空,设置新节点的前一个节点为现在的尾节点
                 node.prev = t;
                 if (compareAndSetTail(t, node)) {
+                    // 成功,设置旧尾节点的下一个节点为新节点
                     t.next = node;
                     return t;
                 }
@@ -628,6 +630,7 @@ public abstract class AbstractQueuedSynchronizer
         // 通过当前的线程和锁模式新建一个节点
         Node node = new Node(Thread.currentThread(), mode);
         // Try the fast path of enq; backup to full enq on failure
+        // 尝试添加新节点到尾节点后面,成功则返回新节点,否则进入enq()方法不断尝试
         // Pred指针指向尾节点Tail
         Node pred = tail;
         if (pred != null) {
@@ -851,6 +854,10 @@ public abstract class AbstractQueuedSynchronizer
      */
     private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
         // 获取头结点的节点状态
+        // CANCELLED = 1
+        // SIGNAL = -1
+        // CONDITION = -2
+        // PROPAGATE = -3
         int ws = pred.waitStatus;
         // 说明头结点处于唤醒状态
         if (ws == Node.SIGNAL)
@@ -937,11 +944,12 @@ public abstract class AbstractQueuedSynchronizer
                     failed = false;
                     return interrupted;
                 }
-                // 说明p为头节点且当前没有获取到锁（可能是非公平锁被抢占了）或者是p不为头结点，这个时候就要判断当前node是否要被阻塞（被阻塞条件：前驱节点的waitStatus为-1），防止无限循环浪费资源
+                // 说明p为头节点且当前没有获取到锁（可能是非公平锁被抢占了）或者是p不为头结点，
+                // 这个时候就要判断当前node是否要被阻塞（被阻塞条件：前驱节点的waitStatus为-1），防止无限循环浪费资源
                 // 中断如何处理？
                 // parkAndCheckInterrupt()唤醒后，会执行return Thread.interrupted()
                 if (shouldParkAfterFailedAcquire(p, node) &&
-                    parkAndCheckInterrupt())
+                    parkAndCheckInterrupt())//真正阻塞的方法
                     interrupted = true;
             }
         } finally {
@@ -987,8 +995,10 @@ public abstract class AbstractQueuedSynchronizer
      */
     private boolean doAcquireNanos(int arg, long nanosTimeout)
             throws InterruptedException {
+        // 如果时间到期,直接返回false
         if (nanosTimeout <= 0L)
             return false;
+        // 到期时间
         final long deadline = System.nanoTime() + nanosTimeout;
         final Node node = addWaiter(Node.EXCLUSIVE);
         boolean failed = true;
@@ -1002,8 +1012,11 @@ public abstract class AbstractQueuedSynchronizer
                     return true;
                 }
                 nanosTimeout = deadline - System.nanoTime();
+                // 如果到期,返回false
                 if (nanosTimeout <= 0L)
                     return false;
+                // 到期时间大于1000纳秒才进行阻塞
+                // 小于等于1000纳秒为了避免CPU执行太快超时太多,直接自旋
                 if (shouldParkAfterFailedAcquire(p, node) &&
                     nanosTimeout > spinForTimeoutThreshold)
                     LockSupport.parkNanos(this, nanosTimeout);

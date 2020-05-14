@@ -149,13 +149,13 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          * 方法返回当前锁是不是没有被线程持有
          */
         protected final boolean tryRelease(int releases) {
-			// 减少可重入次数
+			      // 减少可重入次数
             int c = getState() - releases;
-			// 当前线程不是持有锁的线程，抛出异常
+			      // 当前线程不是持有锁的线程，抛出异常
             if (Thread.currentThread() != getExclusiveOwnerThread())
                 throw new IllegalMonitorStateException();
             boolean free = false;
-			// 如果持有线程全部释放，将当前独占锁所有线程设置为null，并更新state
+			      // 如果持有线程全部释放，将当前独占锁所有线程设置为null，并更新state
             if (c == 0) {
                 free = true;
                 setExclusiveOwnerThread(null);
@@ -208,6 +208,16 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          * Performs lock.  Try immediate barge, backing up to normal
          * acquire on failure.
          */
+        /*
+         * 1.尝试获取锁,如果获取到了就直接返回
+         * 2.调用tryAcquire()=>nonfairTryAcquire()方法尝试获取锁,如果获取到了就直接返回
+         * 3.尝试获取锁失败,再调用addWaiter()构建新节点并把新节点入队
+         * 4.然后调用acquireQueued()再次尝试获取锁,如果成功了,直接返回
+         * 5.如果再次失败,再调用shouldParkAfterFailedAcquire()将节点的等待状态置换为唤醒
+         * 6.调用parkAndCheckInterrupt()阻塞当前线程
+         * 7.如果被唤醒了,会在acquireQueued()的for循环再次尝试获取锁,如果成功则返回
+         * 8.如果不成功,再次阻塞,重复3.4.5直到成功获取到锁
+         */
         final void lock() {
             if (compareAndSetState(0, 1))
                 setExclusiveOwnerThread(Thread.currentThread());
@@ -226,6 +236,15 @@ public class ReentrantLock implements Lock, java.io.Serializable {
     static final class FairSync extends Sync {
         private static final long serialVersionUID = -3000897897090466540L;
 
+        /*
+         * 1.如果没有其他线程排队,尝试获取锁,如果获取到了就直接返回
+         * 2.尝试获取锁失败,再调用addWaiter()构建新节点并把新节点入队
+         * 3.然后调用acquireQueued()再次尝试获取锁,如果成功了,直接返回
+         * 4.如果再次失败,再调用shouldParkAfterFailedAcquire()将节点的等待状态置换为唤醒
+         * 5.调用parkAndCheckInterrupt()阻塞当前线程
+         * 6.如果被唤醒了,会在acquireQueued()的for循环再次尝试获取锁,如果成功则返回
+         * 7.如果不成功,再次阻塞,重复3.4.5直到成功获取到锁
+         */
         final void lock() {
             acquire(1);
         }
@@ -247,10 +266,14 @@ public class ReentrantLock implements Lock, java.io.Serializable {
                     return true;
                 }
             }
+            // 如果当前线程本身就占有锁,现在尝试重入,让其获取锁并返回true
             else if (current == getExclusiveOwnerThread()) {
+                // 状态state值加1
                 int nextc = c + acquires;
+                // 数值溢出则报错
                 if (nextc < 0)
                     throw new Error("Maximum lock count exceeded");
+                // 直接将nextc设置为state,因为当前线程持有锁,不存在竞争问题,不需要CAS保证线程安全
                 setState(nextc);
                 return true;
             }
